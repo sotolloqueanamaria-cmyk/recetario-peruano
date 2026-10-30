@@ -1,0 +1,626 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sabores del Perú - Recetario Tradicional</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,600;0,700;0,800;1,400&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<script>
+tailwind.config = {
+  theme: { extend: {
+    colors: {
+      terracota: { DEFAULT: '#C85A32', dark: '#9E3F1D', light: '#F8ECE7' },
+      gold: { DEFAULT: '#D4AF37', light: '#FBF5DF' },
+      burgundy: '#7A1C1C', cream: '#FDFBF7', charcoal: '#2D2926'
+    },
+    fontFamily: { serif: ['Playfair Display','serif'], sans: ['Plus Jakarta Sans','sans-serif'] }
+  } }
+}
+</script>
+<style>
+  body { background:#FDFBF7; font-family:'Plus Jakarta Sans',sans-serif; color:#2D2926; }
+  .hero-pattern {
+    background:
+      radial-gradient(circle at 15% 20%, rgba(212,175,55,.25), transparent 40%),
+      radial-gradient(circle at 85% 80%, rgba(255,255,255,.12), transparent 40%),
+      linear-gradient(135deg,#7A1C1C 0%,#9E3F1D 45%,#C85A32 100%);
+  }
+  .recipe-card { transition: transform .15s ease, box-shadow .15s ease; }
+  .recipe-card:hover { transform: translateY(-2px); box-shadow: 0 6px 16px rgba(0,0,0,.07); }
+  .checked-item { text-decoration: line-through; opacity: .5; }
+  .cover-costa  { background: linear-gradient(135deg,#F59E0B,#C85A32); }
+  .cover-sierra { background: linear-gradient(135deg,#10B981,#0F766E); }
+  .cover-selva  { background: linear-gradient(135deg,#84CC16,#166534); }
+  .fade-in { animation: fade .25s ease; }
+  @keyframes fade { from{opacity:0; transform:translateY(6px)} to{opacity:1; transform:none} }
+  ::-webkit-scrollbar { width:6px; }
+  ::-webkit-scrollbar-track { background:#F8ECE7; }
+  ::-webkit-scrollbar-thumb { background:#C85A32; border-radius:4px; }
+  #drawer { transition: transform .25s ease; }
+  @media print {
+    header, aside, footer, #hero, .no-print, #drawer, #overlay { display:none !important; }
+    body { background:white; }
+    #recipe-detail { box-shadow:none !important; border:none !important; }
+  }
+</style>
+</head>
+<body class="min-h-screen flex flex-col">
+
+<!-- Header -->
+<header class="bg-white/90 backdrop-blur border-b border-stone-200 sticky top-0 z-30">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+    <div class="flex items-center gap-3 cursor-pointer" onclick="resetFilters()">
+      <div class="w-10 h-10 rounded-full bg-terracota flex items-center justify-center text-white shadow-md">
+        <i class="fa-solid fa-pepper-hot"></i>
+      </div>
+      <div>
+        <h1 class="font-serif text-xl font-bold leading-tight">Sabores del <span class="text-terracota">Perú</span></h1>
+        <p class="text-[11px] text-stone-500 font-medium -mt-0.5">Recetario Tradicional Interactivo</p>
+      </div>
+    </div>
+    <div class="flex items-center gap-2">
+      <button onclick="randomRecipe()" class="hidden sm:flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-semibold text-stone-600 hover:bg-stone-100 transition" title="Receta al azar">
+        <i class="fa-solid fa-dice text-terracota"></i> Sorpréndeme
+      </button>
+      <button onclick="toggleFavFilter()" id="fav-filter-btn" class="flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-semibold text-stone-600 hover:bg-stone-100 transition" title="Ver favoritas">
+        <i class="fa-solid fa-heart text-terracota"></i> <span class="hidden sm:inline">Favoritas</span>
+        <span id="fav-count" class="text-xs bg-terracota-light text-terracota px-1.5 py-0.5 rounded-full">0</span>
+      </button>
+      <button onclick="toggleDrawer(true)" class="flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-semibold bg-terracota text-white hover:bg-terracota-dark transition">
+        <i class="fa-solid fa-basket-shopping"></i> <span class="hidden sm:inline">Lista</span>
+        <span id="cart-count" class="text-xs bg-white/25 px-1.5 py-0.5 rounded-full">0</span>
+      </button>
+    </div>
+  </div>
+</header>
+
+<!-- Hero -->
+<section id="hero" class="hero-pattern text-white">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 sm:py-14">
+    <p class="text-gold-light/90 text-xs font-bold tracking-[.25em] uppercase mb-3">Patrimonio gastronómico</p>
+    <h2 class="font-serif text-3xl sm:text-5xl font-extrabold leading-tight max-w-2xl">Tres regiones, un solo sabor: el Perú.</h2>
+    <p class="mt-4 text-white/80 max-w-xl text-sm sm:text-base">Cocina la costa, la sierra y la selva paso a paso. Ajusta las porciones, marca tus favoritas y arma tu lista de compras.</p>
+    <div class="mt-7 flex flex-wrap gap-3" id="hero-stats"></div>
+  </div>
+</section>
+
+<main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 flex-1 w-full">
+  <div class="flex flex-col lg:flex-row gap-8">
+
+    <!-- Sidebar -->
+    <aside class="w-full lg:w-96 flex-shrink-0 space-y-5">
+      <div class="bg-white rounded-2xl p-5 border border-stone-200/80 shadow-sm space-y-4">
+        <div class="flex items-center justify-between">
+          <h2 class="font-serif text-lg font-bold flex items-center gap-2"><i class="fa-solid fa-sliders text-terracota text-sm"></i> Filtros</h2>
+          <button onclick="resetFilters()" class="text-xs font-semibold text-terracota hover:underline">Limpiar</button>
+        </div>
+        <div class="relative">
+          <input type="text" id="search-input" placeholder="Buscar plato o ingrediente..." class="w-full pl-10 pr-4 py-2.5 bg-stone-50 border border-stone-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-terracota/50 focus:border-terracota transition">
+          <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-3 text-stone-400 text-sm"></i>
+        </div>
+        <div>
+          <label class="block text-xs font-semibold uppercase text-stone-500 mb-2">Región</label>
+          <div class="flex flex-wrap gap-1.5" id="region-filters"></div>
+        </div>
+        <div>
+          <label class="block text-xs font-semibold uppercase text-stone-500 mb-2">Tipo de plato</label>
+          <div class="flex flex-wrap gap-1.5" id="category-filters"></div>
+        </div>
+        <div>
+          <label class="block text-xs font-semibold uppercase text-stone-500 mb-2">Dificultad</label>
+          <div class="flex flex-wrap gap-1.5" id="difficulty-filters"></div>
+        </div>
+      </div>
+
+      <div class="space-y-3">
+        <h3 class="text-xs font-bold uppercase tracking-wider text-stone-400 px-1">Recetas (<span id="recipe-count">0</span>)</h3>
+        <div id="recipe-list" class="space-y-2.5 lg:max-h-[640px] overflow-y-auto pr-1"></div>
+      </div>
+    </aside>
+
+    <!-- Detail -->
+    <section class="flex-1 min-w-0">
+      <div id="recipe-detail" class="bg-white rounded-3xl border border-stone-200/80 shadow-md overflow-hidden"></div>
+    </section>
+  </div>
+</main>
+
+<footer class="bg-stone-900 text-stone-400 mt-16 py-8 text-center text-sm">
+  <div class="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-4">
+    <div class="flex items-center gap-2">
+      <span class="font-serif font-bold text-white text-base">Sabores del Perú</span>
+      <span class="text-xs text-stone-500">| Patrimonio Gastronómico de la Humanidad</span>
+    </div>
+    <p class="text-xs text-stone-500">Hecho con ❤️ para la cocina tradicional peruana.</p>
+  </div>
+</footer>
+
+<!-- Shopping list drawer -->
+<div id="overlay" onclick="toggleDrawer(false)" class="fixed inset-0 bg-black/40 z-40 hidden"></div>
+<aside id="drawer" class="fixed top-0 right-0 h-full w-full max-w-md bg-white z-50 shadow-2xl translate-x-full flex flex-col">
+  <div class="p-5 border-b border-stone-200 flex items-center justify-between">
+    <h3 class="font-serif text-xl font-bold flex items-center gap-2"><i class="fa-solid fa-basket-shopping text-terracota"></i> Lista de compras</h3>
+    <button onclick="toggleDrawer(false)" class="w-9 h-9 rounded-full hover:bg-stone-100 text-stone-500"><i class="fa-solid fa-xmark"></i></button>
+  </div>
+  <div id="cart-body" class="flex-1 overflow-y-auto p-5 space-y-5"></div>
+  <div class="p-4 border-t border-stone-200 flex gap-2">
+    <button onclick="copyCart()" class="flex-1 py-2.5 rounded-xl bg-terracota text-white text-sm font-semibold hover:bg-terracota-dark transition"><i class="fa-regular fa-copy mr-1"></i> Copiar lista</button>
+    <button onclick="clearCart()" class="px-4 py-2.5 rounded-xl bg-stone-100 text-stone-600 text-sm font-semibold hover:bg-stone-200 transition">Vaciar</button>
+  </div>
+</aside>
+
+<div id="toast" class="fixed bottom-6 left-1/2 -translate-x-1/2 bg-stone-900 text-white text-sm px-4 py-2.5 rounded-xl shadow-lg z-50 opacity-0 pointer-events-none transition-opacity"></div>
+
+<script>
+/* Ingredientes: [cantidad, unidad, nombre]. cantidad null = "al gusto" */
+const recipes = [
+/* ===================== COSTA ===================== */
+{ id:'ceviche', title:'Ceviche de Pescado', category:'Entrada', region:'Costa', time:'25 min', difficulty:'Fácil', baseServings:4, emoji:'🐟',
+  description:'El plato bandera del Perú. Pescado fresco "cocido" al instante con limón sutil, ají limo, cebolla morada y cilantro.',
+  tip:'Sírvelo de inmediato: el pescado no debe pasar más de unos minutos en limón.',
+  ingredients:[[800,'g','Pescado blanco fresco (lenguado, corvina o reineta)'],[12,'unid','Limones sutiles'],[2,'unid','Cebolla morada en pluma fina'],[2,'unid','Ají limo picado (sin venas)'],[3,'cdas','Cilantro picado'],[2,'unid','Camotes sancochados'],[2,'tazas','Choclo desgranado cocido'],[1,'unid','Diente de ajo machacado'],[null,'al gusto','Sal marina y pimienta blanca']],
+  steps:['Corta el pescado en cubos de 2 cm y colócalos en un bol bien frío.','Frota el bol con un trozo de ají limo y el ajo machacado para aromatizar.','Sazona el pescado con sal y pimienta blanca. Mezcla suavemente.','Exprime los limones sobre el pescado sin apretar al máximo para que no amargue.','Agrega el ají limo y el cilantro. Mezcla y deja reposar 2 a 3 minutos.','Incorpora la cebolla escurrida de agua helada justo antes de servir para mantenerla crocante.','Sirve al instante con camote, choclo y canchita.'] },
+{ id:'lomo-saltado', title:'Lomo Saltado', category:'Plato de Fondo', region:'Costa', time:'30 min', difficulty:'Media', baseServings:4, emoji:'🥩',
+  description:'Fusión chino-peruana icónica. Tiras de lomo salteadas a fuego vivo con cebolla, tomate, ají amarillo y sillao.',
+  tip:'El fuego debe estar al máximo y la carne en tandas pequeñas, para saltear y no hervir.',
+  ingredients:[[800,'g','Lomo de res en tiras'],[2,'unid','Cebolla morada en gajos gruesos'],[3,'unid','Tomates en gajos (sin pepas)'],[2,'unid','Ají amarillo sin venas en tiras'],[4,'cdas','Sillao (salsa de soya)'],[3,'cdas','Vinagre tinto'],[1,'cda','Salsa de ostión'],[4,'unid','Papas amarillas fritas en bastones'],[2,'cdas','Cilantro picado'],[4,'porciones','Arroz blanco cocido']],
+  steps:['Sazona la carne con sal, pimienta y ajo molido.','Calienta un wok a fuego muy alto con un chorro de aceite hasta que humee.','Saltea la carne en tandas pequeñas para sellarla sin que pierda jugos. Reserva.','En el mismo wok saltea la cebolla y el ají amarillo 1 minuto.','Agrega el tomate y regresa la carne con sus jugos.','Vierte el vinagre, el sillao y la salsa de ostión por los bordes para avivar el flameado.','Mezcla 30 segundos, añade el cilantro y sirve con papas fritas y arroz.'] },
+{ id:'aji-de-gallina', title:'Ají de Gallina', category:'Plato de Fondo', region:'Costa', time:'45 min', difficulty:'Media', baseServings:4, emoji:'🍗',
+  description:'Cremoso guiso de pollo deshilachado en crema de ají amarillo, pan remojado en leche y parmesano.',
+  tip:'Cocina bien la pasta de ají amarillo para que no quede cruda ni amarga.',
+  ingredients:[[700,'g','Pechuga de pollo cocida y deshilachada'],[5,'cdas','Pasta de ají amarillo'],[4,'tajadas','Pan de molde sin corteza'],[1,'taza','Leche evaporada'],[1.5,'tazas','Caldo de pollo'],[1,'unid','Cebolla en cubitos'],[50,'g','Queso parmesano rallado'],[40,'g','Nueces o pecanas picadas'],[4,'unid','Huevos duros'],[4,'unid','Papas amarillas sancochadas'],[8,'unid','Aceitunas de botija']],
+  steps:['Sancocha la pechuga con sal, apio y kion. Deshilácha y reserva el caldo.','Remoja el pan en la leche y un poco de caldo; licúa hasta que quede suave.','Prepara un aderezo con aceite, cebolla y ajo hasta que la cebolla esté transparente.','Añade la pasta de ají amarillo y cocina a fuego lento 8 a 10 minutos.','Vierte el pan licuado y remueve constantemente; suelta con caldo si espesa mucho.','Incorpora el pollo, el parmesano y las nueces. Cocina 5 minutos a fuego bajo.','Sirve sobre rodajas de papa con huevo duro y aceituna.'] },
+{ id:'causa-limena', title:'Causa Limeña de Pollo', category:'Entrada', region:'Costa', time:'40 min', difficulty:'Fácil', baseServings:4, emoji:'🥔',
+  description:'Entrada fría emblemática: masa de papa amarilla con ají amarillo y limón, rellena de pollo y palta.',
+  ingredients:[[1,'kg','Papa amarilla prensada y fría'],[4,'cdas','Pasta de ají amarillo'],[4,'cdas','Jugo de limón sutil'],[3,'cdas','Aceite vegetal'],[300,'g','Pechuga de pollo deshilachada'],[4,'cdas','Mayonesa'],[2,'unid','Palta madura en láminas'],[2,'unid','Huevos duros'],[null,'al gusto','Sal, pimienta y aceitunas para decorar']],
+  steps:['Sancocha las papas con sal, pélalas calientes y pásalas por el prensapapas.','Deja enfriar y añade ají amarillo, limón, aceite, sal y pimienta. Amasa hasta que quede lisa.','Mezcla el pollo con la mayonesa y sazona.','En un molde coloca una base de masa de papa.','Agrega una capa de palta y encima el pollo con mayonesa.','Cubre con otra capa de masa y empareja.','Desmolda, decora con huevo y aceituna y sirve fría.'] },
+{ id:'papa-huancaina', title:'Papa a la Huancaína', category:'Entrada', region:'Costa', time:'30 min', difficulty:'Fácil', baseServings:4, emoji:'🥔',
+  description:'Papas sancochadas bañadas en una cremosa salsa de queso fresco y ají amarillo, nacida en Huancayo y adoptada por Lima.',
+  tip:'Licúa el ají con el queso primero y añade el aceite en hilo para una textura sedosa.',
+  ingredients:[[8,'unid','Papas amarillas sancochadas'],[3,'unid','Ají amarillo sin venas'],[250,'g','Queso fresco'],[0.5,'taza','Leche evaporada'],[4,'unid','Galletas de soda'],[4,'cdas','Aceite vegetal'],[2,'unid','Huevos duros'],[8,'unid','Aceitunas negras'],[4,'hojas','Lechuga']],
+  steps:['Sancocha las papas, pélalas y córtalas en rodajas gruesas. Deja enfriar.','Sofríe el ají amarillo en un poco de aceite 3 minutos.','Licúa el ají con el queso fresco, la leche evaporada y las galletas de soda.','Con la licuadora encendida agrega el aceite en hilo hasta obtener una crema espesa. Sazona con sal.','Sirve las papas sobre hojas de lechuga y baña con la crema.','Decora con huevo duro y aceitunas.'] },
+{ id:'arroz-con-pollo', title:'Arroz con Pollo', category:'Plato de Fondo', region:'Costa', time:'1 h', difficulty:'Media', baseServings:4, emoji:'🍗',
+  description:'Arroz verde de cilantro con presas de pollo, arvejas y zanahoria. Un clásico de las mesas familiares peruanas.',
+  ingredients:[[4,'unid','Presas de pollo'],[2,'tazas','Arroz'],[1,'taza','Cilantro licuado'],[0.5,'taza','Cerveza rubia'],[2,'cdas','Pasta de ají amarillo'],[0.5,'taza','Arvejas'],[1,'unid','Zanahoria en cubitos'],[1,'unid','Pimiento rojo en tiras'],[1,'unid','Cebolla picada'],[3,'tazas','Caldo de pollo']],
+  steps:['Sazona el pollo con sal, pimienta y ajo. Dóralo en una olla y resérvalo.','En la misma olla haz un aderezo con cebolla, ajo y ají amarillo 5 minutos.','Agrega el cilantro licuado y cocina hasta que el color se oscurezca.','Vierte la cerveza y deja que evapore el alcohol.','Añade el caldo, las presas, las arvejas y la zanahoria. Cuando hierva, incorpora el arroz.','Cocina tapado a fuego bajo 20 minutos hasta que el arroz esté graneado.','Decora con pimiento y sirve con salsa criolla.'] },
+{ id:'papa-rellena', title:'Papa Rellena', category:'Entrada', region:'Costa', time:'1 h', difficulty:'Media', baseServings:4, emoji:'🥔',
+  description:'Masa suave de papa rellena de un picadillo de carne con huevo, aceituna y pasas, frita hasta dorar.',
+  ingredients:[[1,'kg','Papas sancochadas y prensadas'],[300,'g','Carne molida'],[1,'unid','Cebolla picada'],[1,'cda','Ají panca'],[2,'unid','Huevos duros picados'],[8,'unid','Aceitunas negras'],[2,'cdas','Pasas'],[2,'cdas','Maicena o fécula'],[null,'al gusto','Aceite para freír, sal, pimienta y comino']],
+  steps:['Prensa las papas calientes y amasa con maicena, sal y pimienta hasta formar una masa lisa.','Sofríe cebolla, ajo, ají panca y comino. Agrega la carne y cocina hasta que seque.','Mezcla con pasas y deja enfriar; añade el huevo picado y las aceitunas.','Toma una porción de masa, aplánala en la mano y pon un poco de relleno.','Cierra dándole forma ovalada, sin dejar grietas.','Fríe en aceite caliente hasta que estén doradas.','Sirve con salsa criolla.'] },
+{ id:'arroz-con-mariscos', title:'Arroz con Mariscos', category:'Plato de Fondo', region:'Costa', time:'50 min', difficulty:'Media', baseServings:4, emoji:'🦐',
+  description:'Arroz meloso con un aderezo de ají panca y amarillo, cargado de mariscos frescos.',
+  tip:'Agrega los mariscos al final para que no se resequen.',
+  ingredients:[[600,'g','Mariscos mixtos (conchas, langostinos, calamar)'],[2,'tazas','Arroz'],[2,'cdas','Pasta de ají panca'],[2,'cdas','Pasta de ají amarillo'],[0.5,'taza','Vino blanco'],[3.5,'tazas','Caldo de pescado'],[1,'unid','Cebolla picada'],[1,'unid','Pimiento rojo en cubitos'],[0.5,'taza','Arvejas'],[2,'cdas','Culantro picado']],
+  steps:['Haz un aderezo con cebolla, ajo, ají panca y ají amarillo hasta que reduzca.','Agrega el vino blanco y deja evaporar.','Vierte el caldo de pescado y lleva a hervor.','Añade el arroz, las arvejas y el pimiento. Cocina tapado a fuego bajo 15 minutos.','Incorpora los mariscos y cocina 5 minutos más.','Espolvorea culantro, deja reposar 3 minutos y sirve con limón.'] },
+{ id:'jalea-mixta', title:'Jalea Mixta', category:'Entrada', region:'Costa', time:'45 min', difficulty:'Media', baseServings:4, emoji:'🦑',
+  description:'Fritura crocante de pescado y mariscos sobre yuca frita, coronada con salsa criolla.',
+  ingredients:[[500,'g','Filete de pescado en trozos'],[250,'g','Calamar en anillos'],[250,'g','Langostinos pelados'],[1,'taza','Harina para rebozar'],[500,'g','Yuca sancochada'],[2,'unid','Cebolla morada en pluma'],[4,'unid','Limones'],[1,'unid','Ají limo picado'],[2,'cdas','Cilantro picado'],[null,'al gusto','Aceite para freír, sal, pimienta y comino']],
+  steps:['Sazona el pescado y los mariscos con sal, pimienta, comino y ajo.','Fríe la yuca en aceite caliente hasta dorar y reserva.','Reboza los mariscos y el pescado en harina sacudiendo el exceso.','Fríe en tandas en aceite muy caliente hasta que estén dorados y crocantes.','Prepara la salsa criolla con cebolla, limón, ají limo, cilantro y sal.','Sirve la fritura sobre la yuca y cubre con la salsa criolla.'] },
+{ id:'tacu-tacu', title:'Tacu Tacu', category:'Plato de Fondo', region:'Costa', time:'35 min', difficulty:'Media', baseServings:4, emoji:'🍳',
+  description:'Herencia afroperuana: arroz y frijoles canarios dorados en sartén, acompañados de huevo frito y plátano.',
+  ingredients:[[3,'tazas','Arroz cocido del día anterior'],[2,'tazas','Frijoles canarios cocidos'],[1,'unid','Cebolla picada'],[2,'cdas','Pasta de ají amarillo'],[2,'dientes','Ajo picado'],[4,'unid','Huevos'],[2,'unid','Plátanos maduros'],[null,'al gusto','Sal, pimienta y aceite']],
+  steps:['Sofríe cebolla, ajo y ají amarillo hasta que estén dorados.','Agrega los frijoles ligeramente aplastados y mezcla con el arroz.','Sazona y cocina hasta lograr una masa firme.','En una sartén antiadherente con aceite caliente, forma una torta u óvalo compacto.','Dora por ambos lados hasta que se forme una costra crocante.','Fríe los plátanos en rodajas y los huevos.','Sirve el tacu tacu con huevo, plátano y salsa criolla.'] },
+{ id:'cau-cau', title:'Cau Cau', category:'Plato de Fondo', region:'Costa', time:'1 h 30 min', difficulty:'Media', baseServings:4, emoji:'🍲',
+  description:'Guiso limeño de mondongo en cubitos con papa amarilla, ají amarillo, palillo y hierbabuena.',
+  tip:'Lava muy bien el mondongo con limón y hiérvelo bien antes de cortarlo.',
+  ingredients:[[800,'g','Mondongo limpio'],[3,'unid','Papas amarillas en cubitos'],[3,'cdas','Pasta de ají amarillo'],[1,'cdta','Palillo (cúrcuma)'],[2,'cdas','Hierbabuena picada'],[1,'unid','Cebolla picada'],[0.5,'taza','Arvejas'],[2,'dientes','Ajo picado']],
+  steps:['Lava el mondongo con limón y sal. Hiérvelo hasta que esté suave y córtalo en cubitos.','Sofríe cebolla, ajo, ají amarillo y palillo.','Agrega el mondongo y cocina 10 minutos.','Vierte caldo del mondongo y añade las papas en cubitos.','Cocina hasta que las papas estén tiernas y la salsa espese.','Incorpora las arvejas y la hierbabuena. Sirve con arroz blanco.'] },
+{ id:'pollo-a-la-brasa', title:'Pollo a la Brasa', category:'Plato de Fondo', region:'Costa', time:'1 h 30 min + marinado', difficulty:'Difícil', baseServings:4, emoji:'🍗',
+  description:'El pollo más famoso del Perú: marinado con ají panca, sillao y cerveza negra, asado hasta lograr piel dorada y crocante.',
+  tip:'Marina al menos 6 horas y déjalo reposar 10 minutos antes de cortar.',
+  ingredients:[[1,'unid','Pollo entero de 1.8 kg'],[3,'cdas','Sillao'],[2,'cdas','Pasta de ají panca'],[2,'cdas','Ajo molido'],[1,'cdta','Comino'],[2,'cdas','Vinagre tinto'],[0.5,'taza','Cerveza negra'],[null,'al gusto','Sal y pimienta'],[4,'unid','Papas fritas (guarnición)']],
+  steps:['Mezcla sillao, ají panca, ajo, comino, vinagre, cerveza, sal y pimienta.','Unta el pollo por dentro y por fuera, incluso bajo la piel.','Marina en refrigeración mínimo 6 horas, idealmente toda la noche.','Precalienta el horno a 220 °C. Coloca el pollo en rejilla sobre una bandeja.','Hornea 15 minutos a 220 °C y baja a 190 °C. Continúa 1 hora, bañando con el jugo.','Verifica que la parte más gruesa llegue a 75 °C. Deja reposar 10 minutos y sirve con papas fritas, ensalada y crema de ají.'] },
+{ id:'seco-de-cabrito', title:'Seco de Cabrito', category:'Plato de Fondo', region:'Costa', time:'2 h', difficulty:'Difícil', baseServings:6, emoji:'🐐',
+  description:'Festín norteño de Lambayeque: cabrito tierno guisado en cilantro, chicha de jora y ají, con yuca y frijoles.',
+  ingredients:[[1.2,'kg','Cabrito en presas'],[2,'tazas','Cilantro licuado'],[1,'taza','Chicha de jora'],[3,'cdas','Pasta de ají amarillo'],[2,'cdas','Pasta de ají mirasol'],[2,'unid','Cebolla roja picada'],[500,'g','Yuca sancochada'],[0.5,'taza','Arvejas'],[4,'porciones','Frijoles canarios']],
+  steps:['Sazona el cabrito con sal, pimienta y ajo. Sella las presas en olla caliente y reserva.','Haz un aderezo con cebolla, ajo y ajíes hasta que reduzca.','Añade el cilantro licuado y cocina hasta que oscurezca.','Regresa el cabrito, vierte la chicha de jora y cubre con agua caliente.','Cocina tapado a fuego lento 1 hora 15 minutos hasta que la carne se suelte.','Añade las arvejas los últimos 10 minutos.','Sirve con yuca, frijoles y arroz blanco.'] },
+{ id:'tamales-peruanos', title:'Tamales Peruanos', category:'Desayuno', region:'Costa', time:'2 h 30 min', difficulty:'Difícil', baseServings:6, emoji:'🌽',
+  description:'Masa de maíz sazonada con ají panca, rellena de cerdo, maní, huevo y aceituna, envuelta en hojas de plátano.',
+  ingredients:[[1,'kg','Masa de maíz molido'],[200,'g','Manteca de cerdo'],[4,'cdas','Pasta de ají panca'],[600,'g','Cerdo en trozos'],[3,'cdas','Maní tostado molido'],[3,'unid','Huevos duros'],[12,'unid','Aceitunas negras'],[6,'unid','Hojas de plátano'],[2,'tazas','Caldo de cerdo']],
+  steps:['Cuece el cerdo con sal y condimentos. Reserva el caldo.','Sofríe ajo, ají panca y comino. Agrega el cerdo y el maní. Deja enfriar.','Bate la manteca con ají panca y ve integrando la masa de maíz con el caldo tibio hasta lograr una masa suave.','Soasa las hojas de plátano a la llama para que se vuelvan flexibles.','Extiende una porción de masa en la hoja, coloca cerdo, huevo y aceituna.','Cubre con más masa, envuelve en forma de paquete y ata con pabilo.','Cocina al vapor 1 hora y 15 minutos. Sirve caliente con salsa criolla.'] },
+{ id:'anticuchos', title:'Anticuchos de Corazón', category:'Entrada', region:'Costa', time:'45 min + marinado', difficulty:'Media', baseServings:4, emoji:'🍢',
+  description:'Tradición criolla: corazón de res marinado en adobo de ají panca, vinagre y comino, asado a la parrilla.',
+  ingredients:[[1,'kg','Corazón de res limpio en trozos'],[6,'cdas','Pasta de ají panca'],[0.5,'taza','Vinagre tinto'],[2,'cdas','Ajo molido'],[1,'cda','Orégano y comino'],[12,'unid','Palitos de brocheta'],[4,'unid','Papas doradas'],[2,'unid','Choclos sancochados'],[1,'taza','Salsa de ají huacatay']],
+  steps:['Limpia el corazón retirando venas y grasa. Córtalo en cubos de 3 a 4 cm.','Mezcla ají panca, vinagre, ajo, comino, orégano, sal, pimienta y aceite.','Marina el corazón mínimo 4 horas.','Ensarta 3 o 4 trozos por brocheta.','Calienta la parrilla a fuego muy alto y pincela con el adobo.','Cocina 2 a 3 minutos por lado.','Sirve con papa, choclo y salsa de ají.'] },
+{ id:'arroz-con-pato', title:'Arroz con Pato a la Chiclayana', category:'Plato de Fondo', region:'Costa', time:'1 h 15 min', difficulty:'Media', baseServings:4, emoji:'🦆',
+  description:'Majestuoso plato del norte: pato cocinado con cilantro, ají amarillo y cerveza negra sobre un arroz aromático.',
+  ingredients:[[4,'unid','Presas de pato'],[3,'tazas','Arroz de grano largo'],[1.5,'tazas','Cilantro licuado'],[1,'taza','Cerveza negra'],[0.5,'taza','Chicha de jora'],[4,'cdas','Ají amarillo licuado'],[1,'unid','Pimiento rojo en tiras'],[0.5,'taza','Arvejas'],[1,'unid','Cebolla picada']],
+  steps:['Sazona el pato y dóralo en su propia grasa hasta que quede crocante. Reserva.','En la misma grasa sofríe cebolla, ajo y ají amarillo 8 minutos.','Añade el cilantro y cocina hasta que se oscurezca.','Vierte cerveza y chicha, acomoda el pato y cocina tapado 40 minutos.','Retira el pato; añade arroz, arvejas, pimiento y caldo caliente.','Cocina a fuego bajo 20 minutos hasta que el arroz esté graneado.','Sirve con el pato encima y salsa criolla.'] },
+{ id:'seco-de-cordero', title:'Seco de Cordero con Frijoles', category:'Plato de Fondo', region:'Costa', time:'1 h 20 min', difficulty:'Media', baseServings:4, emoji:'🍲',
+  description:'Guiso norteño de cordero en abundante cilantro, ají mirasol y chicha de jora.',
+  ingredients:[[800,'g','Pierna de cordero en presas'],[1.5,'tazas','Cilantro licuado'],[1,'taza','Chicha de jora o cerveza negra'],[3,'cdas','Ají amarillo en pasta'],[2,'cdas','Ají mirasol en pasta'],[1,'taza','Arvejas y zanahoria'],[4,'porciones','Frijoles canarios'],[1,'unid','Cebolla picada'],[4,'porciones','Arroz blanco']],
+  steps:['Sella el cordero con sal y pimienta. Reserva.','Sofríe cebolla, ajo, ají amarillo y mirasol.','Agrega el cilantro licuado y cocina 5 minutos.','Regresa el cordero con la chicha de jora. Tapa y cocina a fuego lento 45 a 50 minutos.','Añade arvejas y zanahoria los últimos 10 minutos.','Sirve con frijoles cremosos y arroz.'] },
+{ id:'carapulcra', title:'Carapulcra con Sopa Seca', category:'Plato de Fondo', region:'Costa', time:'1 h 45 min', difficulty:'Difícil', baseServings:6, emoji:'🍝',
+  description:'Combo afroperuano chinchano: guiso ancestral de papa seca con cerdo y tallarines a la albahaca.',
+  ingredients:[[500,'g','Papa seca'],[600,'g','Cerdo (costilla o panceta)'],[5,'cdas','Ají panca'],[4,'cdas','Maní tostado molido'],[1,'tableta','Chocolate de taza (opcional)'],[500,'g','Tallarines gruesos'],[1,'taza','Albahaca licuada'],[2,'litros','Caldo de carne o gallina'],[2,'unid','Cebolla roja y ajo']],
+  steps:['Tuesta la papa seca sin aceite y remójala en agua caliente 1 hora. Escurre.','Dora el cerdo y reserva. Prepara un aderezo espeso con cebolla, ajo y ají panca.','Añade papa seca, cerdo y caldo. Cocina a fuego lento removiendo.','Cuando la papa esté suave, agrega maní y chocolate. Rectifica sal.','Para la sopa seca: aderezo con achiote, cebolla, ajo y albahaca licuada.','Vierte caldo, añade los tallarines y cocina tapado hasta que absorban el líquido.','Sirve ambos platos juntos con salsa criolla.'] },
+
+/* ===================== SIERRA ===================== */
+{ id:'ocopa-arequipena', title:'Ocopa Arequipeña', category:'Entrada', region:'Sierra', time:'30 min', difficulty:'Fácil', baseServings:4, emoji:'🥜',
+  description:'Papas bañadas en una salsa verde de huacatay, maní y queso, típica de Arequipa.',
+  ingredients:[[6,'unid','Papas amarillas sancochadas'],[0.5,'taza','Hojas de huacatay'],[2,'unid','Ají amarillo o mirasol'],[0.5,'taza','Maní tostado'],[3,'unid','Galletas de soda'],[100,'g','Queso fresco'],[0.5,'taza','Leche evaporada'],[3,'cdas','Aceite'],[2,'unid','Huevos duros y aceitunas']],
+  steps:['Sancocha las papas, pélalas y córtalas en rodajas.','Sofríe el ají 3 minutos en aceite.','Licúa ají, huacatay, maní, galletas, queso, leche y aceite hasta que quede cremoso.','Sazona con sal.','Baña las papas con la salsa y decora con huevo duro y aceitunas.'] },
+{ id:'olluquito-con-charqui', title:'Olluquito con Charqui', category:'Plato de Fondo', region:'Sierra', time:'50 min', difficulty:'Media', baseServings:4, emoji:'🥘',
+  description:'Guiso andino de olluco en tiritas con charqui (carne seca), ají panca y amarillo.',
+  tip:'Remoja el charqui varias horas y cambia el agua para quitar el exceso de sal.',
+  ingredients:[[700,'g','Olluco pelado en tiras'],[150,'g','Charqui desalado y deshilachado'],[1,'unid','Cebolla picada'],[2,'dientes','Ajo molido'],[1,'cda','Ají panca'],[1,'cda','Ají amarillo'],[2,'cdas','Culantro picado'],[4,'porciones','Arroz blanco']],
+  steps:['Remoja el charqui y hiérvelo 15 minutos. Escúrrelo y deshilacha.','Sofríe cebolla, ajo, ají panca y ají amarillo.','Agrega el charqui y cocina 5 minutos.','Incorpora el olluco y un chorrito de caldo. Cocina tapado 15 a 20 minutos.','Espolvorea culantro y sirve con arroz blanco.'] },
+{ id:'adobo-arequipeno', title:'Adobo Arequipeño', category:'Desayuno', region:'Sierra', time:'1 h 30 min + marinado', difficulty:'Media', baseServings:4, emoji:'🍖',
+  description:'Cerdo macerado en chicha de jora, ajíes y especias, tradicional desayuno dominguero arequipeño con pan.',
+  ingredients:[[1,'kg','Pierna o costillar de cerdo'],[1,'taza','Chicha de jora'],[0.5,'taza','Vinagre'],[3,'cdas','Ají panca'],[2,'cdas','Ají mirasol'],[2,'unid','Cebolla picada'],[5,'dientes','Ajo molido'],[1,'cdta','Comino y orégano'],[4,'unid','Panes franceses']],
+  steps:['Mezcla chicha, vinagre, ajíes, ajo, comino, orégano y sal.','Marina el cerdo toda la noche en refrigeración.','Sofríe la cebolla en una olla y agrega el cerdo con su marinada.','Cubre con agua y cocina tapado a fuego lento 1 hora a 1 hora y 15 minutos.','Sirve caliente con pan francés.'] },
+{ id:'humitas', title:'Humitas', category:'Desayuno', region:'Sierra', time:'1 h 15 min', difficulty:'Media', baseServings:6, emoji:'🌽',
+  description:'Masa de choclo tierno con queso y anís, envuelta en sus propias hojas y cocida al vapor.',
+  ingredients:[[8,'unid','Choclos tiernos con hojas'],[200,'g','Queso fresco'],[100,'g','Manteca o mantequilla'],[2,'cdas','Ají amarillo'],[1,'unid','Cebolla picada'],[1,'cdta','Anís'],[2,'cdas','Azúcar'],[1,'unid','Huevo']],
+  steps:['Desgrana los choclos y reserva las hojas más grandes.','Muele el choclo con el anís hasta obtener una masa.','Sofríe cebolla con ají amarillo en la manteca. Mezcla con la masa, azúcar, sal y huevo.','Extiende dos hojas, coloca masa y un trozo de queso.','Envuelve formando un paquete y ata con pabilo.','Cocina al vapor 40 a 50 minutos. Sirve calientes.'] },
+{ id:'rocoto-relleno', title:'Rocoto Relleno Arequipeño', category:'Plato de Fondo', region:'Sierra', time:'1 h 10 min', difficulty:'Difícil', baseServings:4, emoji:'🌶️',
+  description:'Orgullo arequipeño: rocotos blanqueados rellenos de picadillo con maní y pasas, gratinados con queso.',
+  ingredients:[[4,'unid','Rocotos grandes y firmes'],[500,'g','Carne picada'],[2,'unid','Cebolla roja en cubitos'],[3,'cdas','Maní tostado molido'],[2,'cdas','Pasas negras'],[200,'g','Queso fresco en tajadas'],[0.5,'taza','Leche evaporada'],[1,'unid','Huevo batido'],[2,'cdas','Azúcar y vinagre']],
+  steps:['Corta las tapas de los rocotos y retira venas y semillas con guantes.','Blanquéalos en agua con sal, azúcar y vinagre 3 minutos. Repite 3 veces cambiando el agua.','Sofríe cebolla, ajo, comino y ají panca. Agrega la carne y cocina.','Incorpora maní, pasas y orégano.','Rellena los rocotos, cubre con queso y tápalos.','Baña con leche y huevo batido. Hornea a 180 °C por 20 minutos hasta gratinar.'] },
+{ id:'cuy-chactado', title:'Cuy Chactado', category:'Plato de Fondo', region:'Sierra', time:'1 h 30 min + marinado', difficulty:'Difícil', baseServings:4, emoji:'🍽️',
+  description:'Cuy frito y aplastado con una piedra para lograr una piel dorada y crocante, típico de Arequipa.',
+  tip:'Fríe a fuego medio para que se cocine bien por dentro sin quemar la piel.',
+  ingredients:[[2,'unid','Cuyes limpios'],[2,'cdas','Ajo molido'],[1,'cdta','Comino'],[2,'cdas','Ají panca'],[1,'litro','Aceite para freír'],[6,'unid','Papas amarillas sancochadas'],[null,'al gusto','Sal y pimienta'],[1,'taza','Salsa de rocoto']],
+  steps:['Sazona los cuyes con ajo, comino, ají panca, sal y pimienta. Marina 3 horas.','Calienta abundante aceite a fuego medio.','Fríe el cuy y coloca encima una piedra limpia o una sartén pesada para aplastarlo.','Cocina 20 a 25 minutos por lado hasta que la piel esté crocante.','Escurre sobre papel absorbente.','Sirve con papas y salsa de rocoto.'] },
+{ id:'patasca', title:'Patasca', category:'Sopa', region:'Sierra', time:'2 h 30 min', difficulty:'Difícil', baseServings:6, emoji:'🥣',
+  description:'Sopa contundente de mote, mondongo y carnes con ají panca y hierbas andinas.',
+  ingredients:[[500,'g','Mote pelado'],[500,'g','Mondongo limpio'],[300,'g','Carne de cerdo'],[1,'unid','Cebolla picada'],[3,'dientes','Ajo'],[2,'cdas','Ají panca'],[3,'unid','Papas'],[2,'cdas','Huacatay o hierbabuena']],
+  steps:['Remoja el mote desde la noche anterior.','Hierve el mondongo y la carne de cerdo hasta que estén suaves. Corta en trozos.','Prepara un aderezo con cebolla, ajo y ají panca.','Agrega el aderezo a la olla con el caldo, el mote, el mondongo y la carne.','Cocina 1 hora y 30 minutos a fuego lento.','Añade las papas los últimos 20 minutos.','Sirve con hierbabuena o huacatay picado.'] },
+{ id:'chairo', title:'Chairo', category:'Sopa', region:'Sierra', time:'2 h', difficulty:'Difícil', baseServings:6, emoji:'🥣',
+  description:'Sopa andina con chuño, carne y verduras, típica de Arequipa y Puno.',
+  ingredients:[[300,'g','Chuño remojado'],[400,'g','Carne de cordero o res'],[150,'g','Charqui desalado'],[1,'unid','Zanahoria en cubos'],[0.5,'taza','Arvejas'],[0.5,'taza','Habas'],[200,'g','Zapallo'],[2,'cdas','Hierbabuena o muña']],
+  steps:['Remoja el chuño 1 día antes cambiando el agua.','Hierve la carne y el charqui en agua con sal hasta que ablanden.','Añade el chuño, la zanahoria, las habas y las arvejas.','Cocina a fuego lento 40 minutos.','Agrega el zapallo hasta que se deshaga y espese la sopa.','Sirve caliente con hierbabuena.'] },
+{ id:'pachamanca', title:'Pachamanca a la Olla', category:'Plato de Fondo', region:'Sierra', time:'1 h 30 min + maceración', difficulty:'Difícil', baseServings:6, emoji:'🍖',
+  description:'Homenaje a la Pachamama: carnes maceradas en hierbas andinas cocidas lentamente con tubérculos.',
+  ingredients:[[600,'g','Cerdo (panceta o bondiola)'],[6,'unid','Presas de pollo'],[600,'g','Cordero en trozos'],[1,'taza','Chincho y huacatay licuados'],[4,'cdas','Ají panca en pasta'],[1,'taza','Chicha de jora o vino tinto'],[6,'unid','Papas huayro y camotes'],[6,'unid','Habas y choclos'],[4,'pliegos','Hojas de plátano']],
+  steps:['Licúa chincho, huacatay, ají panca, ají amarillo, chicha, ajo, comino, sal y pimienta.','Macera las carnes al menos 3 horas, o desde la víspera.','Forra el fondo de una olla con hojas de plátano o pancas de choclo.','Coloca primero papas y camotes, luego las carnes marinadas.','Añade habas y choclos y baña con los jugos de la maceración.','Cubre herméticamente con hojas y una tapa pesada.','Cocina a fuego medio-bajo 1 hora y 15 minutos sin destapar.'] },
+
+/* ===================== SELVA ===================== */
+{ id:'ensalada-de-chonta', title:'Ensalada de Chonta', category:'Entrada', region:'Selva', time:'20 min', difficulty:'Fácil', baseServings:4, emoji:'🥗',
+  description:'Fresca ensalada de palmito de chonta con tomate, cebolla y limón.',
+  ingredients:[[400,'g','Palmito de chonta en rodajas'],[3,'unid','Tomates en gajos'],[1,'unid','Cebolla roja en pluma'],[3,'unid','Limones'],[3,'cdas','Aceite de oliva'],[2,'cdas','Sacha culantro picado'],[null,'al gusto','Sal y ají charapita']],
+  steps:['Escurre el palmito de chonta y córtalo en rodajas finas.','Mezcla el tomate y la cebolla en un bol.','Añade el palmito y el sacha culantro.','Aliña con limón, aceite, sal y un toque de ají charapita.','Sirve fría de inmediato.'] },
+{ id:'chaufa-amazonico', title:'Chaufa Amazónico', category:'Plato de Fondo', region:'Selva', time:'25 min', difficulty:'Fácil', baseServings:4, emoji:'🍛',
+  description:'Chaufa selvático con chorizo regional, huevo y sacha culantro.',
+  ingredients:[[4,'tazas','Arroz cocido frío'],[2,'unid','Chorizos regionales picados'],[3,'unid','Huevos batidos'],[3,'unid','Cebolla china picada'],[3,'cdas','Sillao'],[1,'cda','Ajo y kión picados'],[2,'cdas','Sacha culantro picado'],[null,'al gusto','Aceite, sal y ají charapita']],
+  steps:['Fríe el chorizo en wok caliente y reserva.','Prepara una tortilla con los huevos, córtala en cuadritos y reserva.','Saltea ajo y kión en aceite muy caliente.','Agrega el arroz frío y saltea a fuego alto.','Incorpora sillao, chorizo, tortilla y cebolla china.','Sirve con sacha culantro y ají charapita.'] },
+{ id:'inchicapi', title:'Inchicapi', category:'Sopa', region:'Selva', time:'1 h 15 min', difficulty:'Media', baseServings:6, emoji:'🥜',
+  description:'Sopa amazónica espesa de gallina con maní molido, maíz y culantro.',
+  ingredients:[[1,'unid','Gallina criolla en presas'],[1,'taza','Maní tostado molido'],[0.5,'taza','Maíz molido'],[400,'g','Yuca en trozos'],[1,'taza','Sacha culantro o cilantro'],[1,'unid','Cebolla picada'],[3,'dientes','Ajo'],[2,'litros','Caldo']],
+  steps:['Hierve la gallina con sal y ajo hasta que esté suave.','Licúa maní, maíz y culantro con un poco de caldo.','En una olla sofríe cebolla y ajo.','Agrega el licuado y el caldo, cocinando a fuego lento.','Incorpora la gallina y la yuca. Cocina 25 minutos hasta espesar.','Sirve caliente.'] },
+{ id:'patarashca', title:'Patarashca', category:'Plato de Fondo', region:'Selva', time:'45 min', difficulty:'Media', baseServings:4, emoji:'🐟',
+  description:'Pescado de río envuelto en hojas de bijao con hierbas amazónicas y asado a la parrilla.',
+  ingredients:[[800,'g','Pescado de río (paiche, doncella o tilapia)'],[4,'unid','Hojas de bijao'],[3,'cdas','Sacha culantro'],[1,'cda','Ají charapita'],[3,'dientes','Ajo'],[1,'unid','Cebolla en rodajas'],[2,'unid','Tomates en rodajas'],[2,'unid','Limones'],[400,'g','Yuca sancochada']],
+  steps:['Sazona el pescado con sal, ajo y limón.','Soasa las hojas de bijao para ablandarlas.','Coloca en cada hoja una porción de pescado con cebolla, tomate, sacha culantro y ají charapita.','Envuelve y ata con pabilo.','Cocina a la parrilla o brasa 15 a 20 minutos por lado.','Sirve con yuca sancochada.'] },
+{ id:'timbuche', title:'Timbuche', category:'Sopa', region:'Selva', time:'40 min', difficulty:'Media', baseServings:4, emoji:'🍜',
+  description:'Caldo reconfortante de pescado de río con cebolla, culantro y un toque de ají charapita.',
+  ingredients:[[800,'g','Pescado de río (boquichico o doncella)'],[1,'unid','Cebolla en pluma'],[3,'dientes','Ajo'],[1,'cda','Kión rallado'],[2,'cdas','Sacha culantro picado'],[3,'unid','Cebolla china'],[1,'cdta','Ají charapita'],[2,'unid','Limones'],[4,'unid','Plátano verde sancochado']],
+  steps:['Limpia el pescado y córtalo en trozos.','Hierve agua con cebolla, ajo, kión y sal.','Agrega el pescado y cocina 15 a 20 minutos.','Añade cebolla china, sacha culantro y ají charapita.','Termina con jugo de limón y sirve caliente con plátano sancochado.'] },
+{ id:'juane-de-arroz', title:'Juane de Arroz Amazónico', category:'Plato de Fondo', region:'Selva', time:'1 h 30 min', difficulty:'Difícil', baseServings:4, emoji:'🍚',
+  description:'Emblema de la fiesta de San Juan: arroz con palillo relleno de gallina, envuelto en hojas de bijao.',
+  ingredients:[[4,'unid','Presas de gallina'],[4,'tazas','Arroz graneado'],[8,'unid','Hojas de bijao'],[4,'unid','Huevos duros'],[4,'unid','Huevos frescos batidos'],[8,'unid','Aceitunas negras'],[1.5,'cdas','Palillo (cúrcuma)'],[3,'cdas','Mishquina'],[4,'cdas','Sacha culantro']],
+  steps:['Sancocha la gallina con mishquina, sacha culantro, palillo y sal. Reserva caldo y presas.','Cocina el arroz con el caldo y más palillo para darle color.','Enfría y mezcla con los huevos batidos.','Cruza dos hojas de bijao soasadas y coloca arroz en el centro.','Agrega presa de gallina, huevo duro y dos aceitunas.','Cubre con arroz, envuelve y amarra con pabilo.','Hierve 30 minutos. Sirve con cocona y patacones.'] },
+{ id:'tacacho-con-cecina', title:'Tacacho con Cecina y Chorizo', category:'Plato de Fondo', region:'Selva', time:'40 min', difficulty:'Fácil', baseServings:4, emoji:'🍌',
+  description:'Bolas de plátano verde machacado con chicharrón, servidas con cecina ahumada y chorizo regional.',
+  ingredients:[[6,'unid','Plátanos verdes'],[600,'g','Cecina de cerdo'],[4,'unid','Chorizos regionales'],[150,'g','Chicharrón en cubitos'],[3,'cdas','Manteca de cerdo'],[1,'taza','Ají de cocona con charapita'],[null,'al gusto','Sal']],
+  steps:['Pela los plátanos y córtalos en rodajas gruesas.','Fríelos o ásalos al carbón hasta que estén cocidos por dentro.','Machácalos calientes en un mortero.','Agrega manteca, sal y chicharrón a la masa.','Forma bolas compactas con las manos.','Dora la cecina y el chorizo en una sartén.','Sirve con ají de cocona.'] }
+];
+
+/* ============ Estado ============ */
+const REGIONS = ['Costa','Sierra','Selva'];
+const DIFFS = ['Fácil','Media','Difícil'];
+const store = {
+  get(k, d){ try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch(e){ return d; } },
+  set(k, v){ try { localStorage.setItem(k, JSON.stringify(v)); } catch(e){} }
+};
+let state = {
+  recipeId: recipes[0].id, servings: recipes[0].baseServings,
+  region:'all', category:'all', difficulty:'all', query:'', onlyFavs:false,
+  checkedIng:new Set(), checkedSteps:new Set()
+};
+let favs = new Set(store.get('sdp_favs', []));
+let cart = store.get('sdp_cart', []); // [{id, recipe, text}]
+
+/* ============ Utilidades ============ */
+const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const regionStyle = { Costa:'bg-amber-100 text-amber-800', Sierra:'bg-emerald-100 text-emerald-800', Selva:'bg-lime-100 text-lime-800' };
+const diffStyle = { 'Fácil':'text-emerald-600', 'Media':'text-amber-600', 'Difícil':'text-red-600' };
+const diffDots = { 'Fácil':1, 'Media':2, 'Difícil':3 };
+const find = id => recipes.find(r => r.id === id);
+
+function fmtAmount(v){
+  if (v >= 10) { const r = Math.round(v * 2) / 2; return Number.isInteger(r) ? String(r) : r.toFixed(1); }
+  const q = Math.round(v * 4) / 4;
+  const whole = Math.floor(q), frac = q - whole;
+  const f = {0:'',0.25:'¼',0.5:'½',0.75:'¾'}[frac];
+  if (q === 0) return '¼';
+  return whole ? (f ? `${whole} ${f}` : String(whole)) : f;
+}
+function ingText(ing, base, n){
+  const [amt, unit, name] = ing;
+  if (amt === null) return `${name} (${unit})`;
+  return `${fmtAmount(amt / base * n)} ${unit} ${name}`.replace(/\s+/g,' ');
+}
+function toast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.remove('opacity-0');
+  clearTimeout(toast._t); toast._t = setTimeout(() => t.classList.add('opacity-0'), 1800);
+}
+function difficultyMeter(d){
+  const n = diffDots[d] || 1;
+  return `<span class="inline-flex gap-0.5 align-middle mr-1">${[1,2,3].map(i => `<span class="w-1.5 h-1.5 rounded-full ${i<=n?'bg-terracota':'bg-stone-300'}"></span>`).join('')}</span>`;
+}
+
+/* ============ Filtros ============ */
+function chip(label, active, attr){
+  return `<button ${attr} class="px-3 py-1.5 rounded-lg text-xs font-medium transition ${active?'bg-terracota text-white':'bg-stone-100 text-stone-600 hover:bg-stone-200'}">${label}</button>`;
+}
+function renderFilters(){
+  const cats = [...new Set(recipes.map(r => r.category))];
+  const cnt = (k, v) => recipes.filter(r => r[k] === v).length;
+  document.getElementById('region-filters').innerHTML =
+    chip('Todas', state.region==='all', `data-k="region" data-v="all"`) +
+    REGIONS.map(r => chip(`${r} <span class="opacity-60">${cnt('region',r)}</span>`, state.region===r, `data-k="region" data-v="${r}"`)).join('');
+  document.getElementById('category-filters').innerHTML =
+    chip('Todos', state.category==='all', `data-k="category" data-v="all"`) +
+    cats.map(c => chip(c, state.category===c, `data-k="category" data-v="${c}"`)).join('');
+  document.getElementById('difficulty-filters').innerHTML =
+    chip('Todas', state.difficulty==='all', `data-k="difficulty" data-v="all"`) +
+    DIFFS.map(d => chip(d, state.difficulty===d, `data-k="difficulty" data-v="${d}"`)).join('');
+}
+function getFiltered(){
+  const q = state.query.trim().toLowerCase();
+  return recipes.filter(r =>
+    (!q || r.title.toLowerCase().includes(q) || r.description.toLowerCase().includes(q) || r.ingredients.some(i => i[2].toLowerCase().includes(q))) &&
+    (state.region==='all' || r.region===state.region) &&
+    (state.category==='all' || r.category===state.category) &&
+    (state.difficulty==='all' || r.difficulty===state.difficulty) &&
+    (!state.onlyFavs || favs.has(r.id))
+  );
+}
+
+/* ============ Hero ============ */
+function renderHero(){
+  const stat = (n, l) => `<div class="bg-white/10 backdrop-blur border border-white/15 rounded-2xl px-5 py-3"><div class="font-serif text-2xl font-bold">${n}</div><div class="text-[11px] uppercase tracking-wider text-white/70">${l}</div></div>`;
+  document.getElementById('hero-stats').innerHTML =
+    stat(recipes.length, 'Recetas') +
+    REGIONS.map(r => stat(recipes.filter(x => x.region===r).length, r)).join('');
+}
+
+/* ============ Lista ============ */
+function renderRecipeList(){
+  const list = getFiltered();
+  document.getElementById('recipe-count').textContent = list.length;
+  const box = document.getElementById('recipe-list');
+  if (!list.length){
+    box.innerHTML = `<div class="text-center py-10 text-stone-400"><i class="fa-solid fa-utensils text-2xl mb-2"></i><p class="text-sm">No se encontraron recetas</p></div>`;
+    return;
+  }
+  box.innerHTML = list.map(r => {
+    const active = r.id === state.recipeId;
+    return `
+    <div onclick="selectRecipe('${r.id}')" class="recipe-card p-3 rounded-2xl border cursor-pointer flex gap-3 items-center ${active?'bg-terracota-light/60 border-terracota':'bg-white border-stone-200 hover:border-stone-300'}">
+      <div class="cover-${r.region.toLowerCase()} w-14 h-14 rounded-xl flex items-center justify-center text-2xl flex-shrink-0 shadow-inner">${r.emoji}</div>
+      <div class="overflow-hidden flex-1 min-w-0">
+        <div class="flex items-center gap-1.5 mb-0.5">
+          <span class="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full ${regionStyle[r.region]}">${r.region}</span>
+          <span class="text-[10px] text-stone-500 font-medium truncate">${r.category}</span>
+        </div>
+        <h4 class="font-serif font-bold text-sm truncate">${esc(r.title)}</h4>
+        <div class="flex items-center gap-3 text-xs text-stone-500 mt-0.5">
+          <span><i class="fa-regular fa-clock text-terracota mr-1"></i>${esc(r.time)}</span>
+          <span class="${diffStyle[r.difficulty]}">${difficultyMeter(r.difficulty)}${r.difficulty}</span>
+        </div>
+      </div>
+      ${favs.has(r.id) ? '<i class="fa-solid fa-heart text-terracota text-sm"></i>' : ''}
+    </div>`;
+  }).join('');
+}
+
+/* ============ Detalle ============ */
+function renderRecipeDetail(){
+  const r = find(state.recipeId); if (!r) return;
+  const n = state.servings;
+  const isFav = favs.has(r.id);
+  const idx = recipes.findIndex(x => x.id === r.id);
+  const prev = recipes[(idx - 1 + recipes.length) % recipes.length];
+  const next = recipes[(idx + 1) % recipes.length];
+  const doneSteps = state.checkedSteps.size;
+  const pct = Math.round(doneSteps / r.steps.length * 100);
+
+  document.getElementById('recipe-detail').innerHTML = `
+  <div class="fade-in">
+    <div class="cover-${r.region.toLowerCase()} relative px-6 sm:px-8 pt-8 pb-7 text-white overflow-hidden">
+      <div class="absolute -right-6 -top-6 text-[11rem] opacity-20 select-none leading-none">${r.emoji}</div>
+      <div class="relative">
+        <div class="flex flex-wrap items-center gap-2 mb-3">
+          <span class="px-3 py-1 bg-white text-stone-800 text-xs font-bold uppercase tracking-wider rounded-full">${r.region}</span>
+          <span class="px-3 py-1 bg-white/20 backdrop-blur text-xs font-medium rounded-full">${r.category}</span>
+          <span class="px-3 py-1 bg-white/20 backdrop-blur text-xs font-medium rounded-full"><i class="fa-regular fa-clock mr-1"></i>${esc(r.time)}</span>
+          <span class="px-3 py-1 bg-white/20 backdrop-blur text-xs font-medium rounded-full">${difficultyMeter(r.difficulty).replace(/bg-stone-300/g,'bg-white/40').replace(/bg-terracota/g,'bg-white')}${r.difficulty}</span>
+        </div>
+        <h2 class="font-serif text-3xl sm:text-4xl font-extrabold max-w-xl">${esc(r.title)}</h2>
+        <div class="flex gap-2 mt-5 no-print">
+          <button onclick="toggleFav('${r.id}')" class="px-4 py-2 rounded-xl text-sm font-semibold bg-white/20 hover:bg-white/30 backdrop-blur transition">
+            <i class="${isFav?'fa-solid':'fa-regular'} fa-heart mr-1"></i> ${isFav?'En favoritas':'Guardar'}
+          </button>
+          <button onclick="window.print()" class="px-4 py-2 rounded-xl text-sm font-semibold bg-white/20 hover:bg-white/30 backdrop-blur transition">
+            <i class="fa-solid fa-print mr-1"></i> Imprimir
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div class="p-6 sm:p-8 space-y-8">
+      <p class="text-stone-600 leading-relaxed italic border-l-4 border-gold pl-4">${esc(r.description)}</p>
+
+      <div class="bg-stone-50 border border-stone-200/80 rounded-2xl p-5 flex flex-col sm:flex-row items-center justify-between gap-4 no-print">
+        <div>
+          <h4 class="font-serif font-bold text-lg">Calculadora de porciones</h4>
+          <p class="text-xs text-stone-500">Los ingredientes se recalculan automáticamente.</p>
+        </div>
+        <div class="flex items-center bg-white border border-stone-200 rounded-xl px-3 py-1.5 shadow-sm">
+          <button onclick="updateServings(-1)" class="w-8 h-8 rounded-lg bg-stone-100 font-bold hover:bg-terracota hover:text-white transition">−</button>
+          <span class="w-14 text-center font-bold text-lg">${n}</span>
+          <button onclick="updateServings(1)" class="w-8 h-8 rounded-lg bg-stone-100 font-bold hover:bg-terracota hover:text-white transition">+</button>
+          <span class="text-xs font-semibold text-stone-400 ml-2">porciones</span>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 xl:grid-cols-12 gap-8">
+        <div class="xl:col-span-5 space-y-4">
+          <h3 class="font-serif text-xl font-bold border-b border-stone-200 pb-2 flex items-center justify-between">
+            <span>Ingredientes</span><i class="fa-solid fa-basket-shopping text-terracota text-sm"></i>
+          </h3>
+          <ul class="space-y-1">
+            ${r.ingredients.map((ing, i) => `
+              <li class="flex items-start gap-3 p-2.5 rounded-xl hover:bg-stone-50 transition">
+                <input type="checkbox" id="ing-${i}" ${state.checkedIng.has(i)?'checked':''} onchange="toggleIng(${i}, this)" class="mt-1 w-4 h-4 accent-terracota cursor-pointer">
+                <label for="ing-${i}" class="text-sm text-stone-700 cursor-pointer flex-1 leading-snug ${state.checkedIng.has(i)?'checked-item':''}">
+                  ${ing[0]===null ? esc(ing[2]) + ` <span class="text-stone-400">(${esc(ing[1])})</span>` : `<span class="font-bold text-terracota">${fmtAmount(ing[0]/r.baseServings*n)} ${esc(ing[1])}</span> ${esc(ing[2])}`}
+                </label>
+              </li>`).join('')}
+          </ul>
+          <button onclick="addToCart()" class="no-print w-full py-2.5 rounded-xl border-2 border-dashed border-terracota/40 text-terracota text-sm font-semibold hover:bg-terracota-light transition">
+            <i class="fa-solid fa-cart-plus mr-1"></i> Añadir a la lista de compras
+          </button>
+        </div>
+
+        <div class="xl:col-span-7 space-y-4">
+          <h3 class="font-serif text-xl font-bold border-b border-stone-200 pb-2 flex items-center justify-between">
+            <span>Paso a paso</span><i class="fa-solid fa-fire-burner text-terracota text-sm"></i>
+          </h3>
+          <div class="no-print">
+            <div class="flex justify-between text-xs text-stone-500 mb-1"><span>Progreso</span><span>${doneSteps}/${r.steps.length} pasos</span></div>
+            <div class="h-2 bg-stone-100 rounded-full overflow-hidden"><div class="h-full bg-terracota transition-all" style="width:${pct}%"></div></div>
+          </div>
+          <ol class="space-y-2">
+            ${r.steps.map((s, i) => `
+              <li class="flex gap-3 items-start p-3 rounded-xl hover:bg-stone-50 transition">
+                <input type="checkbox" id="step-${i}" ${state.checkedSteps.has(i)?'checked':''} onchange="toggleStep(${i})" class="mt-1 w-4 h-4 accent-terracota cursor-pointer flex-shrink-0">
+                <label for="step-${i}" class="text-sm text-stone-700 leading-relaxed cursor-pointer flex-1 ${state.checkedSteps.has(i)?'checked-item':''}">
+                  <span class="inline-flex w-6 h-6 rounded-full bg-terracota-light text-terracota text-xs font-bold items-center justify-center mr-1.5">${i+1}</span>${esc(s)}
+                </label>
+              </li>`).join('')}
+          </ol>
+          ${r.tip ? `<div class="bg-gold-light border border-gold/30 rounded-2xl p-4 flex gap-3 text-sm text-stone-700"><i class="fa-solid fa-lightbulb text-gold mt-0.5"></i><p><strong>Consejo del chef:</strong> ${esc(r.tip)}</p></div>` : ''}
+        </div>
+      </div>
+
+      <div class="flex justify-between gap-3 pt-4 border-t border-stone-200 no-print">
+        <button onclick="selectRecipe('${prev.id}')" class="text-left text-sm text-stone-500 hover:text-terracota transition min-w-0">
+          <i class="fa-solid fa-arrow-left mr-1"></i><span class="truncate">${esc(prev.title)}</span></button>
+        <button onclick="selectRecipe('${next.id}')" class="text-right text-sm text-stone-500 hover:text-terracota transition min-w-0">
+          <span class="truncate">${esc(next.title)}</span><i class="fa-solid fa-arrow-right ml-1"></i></button>
+      </div>
+    </div>
+  </div>`;
+}
+
+/* ============ Acciones ============ */
+function selectRecipe(id){
+  state.recipeId = id;
+  state.servings = find(id).baseServings;
+  state.checkedIng = new Set(); state.checkedSteps = new Set();
+  renderRecipeList(); renderRecipeDetail();
+  if (window.innerWidth < 1024) document.getElementById('recipe-detail').scrollIntoView({behavior:'smooth', block:'start'});
+}
+function updateServings(d){
+  const v = state.servings + d;
+  if (v < 1 || v > 24) return;
+  state.servings = v; renderRecipeDetail();
+}
+function toggleIng(i, el){
+  el.checked ? state.checkedIng.add(i) : state.checkedIng.delete(i);
+  el.nextElementSibling.classList.toggle('checked-item', el.checked);
+}
+function toggleStep(i){
+  state.checkedSteps.has(i) ? state.checkedSteps.delete(i) : state.checkedSteps.add(i);
+  renderRecipeDetail();
+}
+function randomRecipe(){
+  const pool = recipes.filter(r => r.id !== state.recipeId);
+  selectRecipe(pool[Math.floor(Math.random() * pool.length)].id);
+}
+function toggleFav(id){
+  favs.has(id) ? favs.delete(id) : favs.add(id);
+  store.set('sdp_favs', [...favs]);
+  updateFavCount(); renderRecipeList(); renderRecipeDetail();
+  toast(favs.has(id) ? 'Añadida a favoritas' : 'Quitada de favoritas');
+}
+function updateFavCount(){ document.getElementById('fav-count').textContent = favs.size; }
+function toggleFavFilter(){
+  state.onlyFavs = !state.onlyFavs;
+  const b = document.getElementById('fav-filter-btn');
+  b.classList.toggle('bg-terracota-light', state.onlyFavs);
+  renderRecipeList();
+  if (state.onlyFavs && !favs.size) toast('Aún no tienes favoritas');
+}
+
+/* ============ Lista de compras ============ */
+function addToCart(){
+  const r = find(state.recipeId);
+  const items = r.ingredients.filter(i => i[0] !== null);
+  cart = cart.filter(c => c.recipe !== r.title);
+  items.forEach((ing, k) => cart.push({ id: r.id + '-' + k, recipe: r.title, text: ingText(ing, r.baseServings, state.servings) }));
+  store.set('sdp_cart', cart); renderCart();
+  toast(`${items.length} ingredientes añadidos`);
+}
+function removeFromCart(id){ cart = cart.filter(c => c.id !== id); store.set('sdp_cart', cart); renderCart(); }
+function clearCart(){ cart = []; store.set('sdp_cart', cart); renderCart(); }
+function copyCart(){
+  if (!cart.length) return toast('La lista está vacía');
+  const groups = {};
+  cart.forEach(c => (groups[c.recipe] = groups[c.recipe] || []).push(c.text));
+  const txt = Object.entries(groups).map(([k, v]) => `${k}\n` + v.map(t => `- ${t}`).join('\n')).join('\n\n');
+  (navigator.clipboard ? navigator.clipboard.writeText(txt) : Promise.reject()).then(() => toast('Lista copiada')).catch(() => toast('No se pudo copiar'));
+}
+function renderCart(){
+  document.getElementById('cart-count').textContent = cart.length;
+  const body = document.getElementById('cart-body');
+  if (!cart.length){
+    body.innerHTML = `<div class="text-center text-stone-400 py-16"><i class="fa-solid fa-basket-shopping text-3xl mb-3"></i><p class="text-sm">Tu lista está vacía.<br>Añade ingredientes desde cualquier receta.</p></div>`;
+    return;
+  }
+  const groups = {};
+  cart.forEach(c => (groups[c.recipe] = groups[c.recipe] || []).push(c));
+  body.innerHTML = Object.entries(groups).map(([recipe, items]) => `
+    <div>
+      <h4 class="font-serif font-bold text-terracota mb-2">${esc(recipe)}</h4>
+      <ul class="space-y-1">${items.map(c => `
+        <li class="flex items-center gap-2 text-sm text-stone-700 py-1.5 border-b border-stone-100">
+          <input type="checkbox" class="accent-terracota" onchange="this.nextElementSibling.classList.toggle('checked-item', this.checked)">
+          <span class="flex-1">${esc(c.text)}</span>
+          <button onclick="removeFromCart('${c.id}')" class="text-stone-300 hover:text-red-500"><i class="fa-solid fa-xmark"></i></button>
+        </li>`).join('')}
+      </ul>
+    </div>`).join('');
+}
+function toggleDrawer(open){
+  document.getElementById('drawer').classList.toggle('translate-x-full', !open);
+  document.getElementById('overlay').classList.toggle('hidden', !open);
+}
+
+function resetFilters(){
+  state.region = state.category = state.difficulty = 'all';
+  state.query = ''; state.onlyFavs = false;
+  document.getElementById('search-input').value = '';
+  document.getElementById('fav-filter-btn').classList.remove('bg-terracota-light');
+  renderFilters(); renderRecipeList();
+}
+
+/* ============ Init ============ */
+document.addEventListener('DOMContentLoaded', () => {
+  renderHero(); renderFilters(); renderRecipeList(); renderRecipeDetail(); renderCart(); updateFavCount();
+  document.getElementById('search-input').addEventListener('input', e => { state.query = e.target.value; renderRecipeList(); });
+  document.querySelector('aside').addEventListener('click', e => {
+    const b = e.target.closest('button[data-k]'); if (!b) return;
+    state[b.dataset.k] = b.dataset.v; renderFilters(); renderRecipeList();
+  });
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') toggleDrawer(false); });
+});
+</script>
+</body>
+</html>
